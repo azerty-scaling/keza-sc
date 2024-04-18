@@ -4,7 +4,7 @@ pragma solidity >=0.8.22;
 import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IChainlinkData } from "./interfaces/IChainlinkData.sol";
-import { IVault } from "./interfaces/IVault.sol";
+import { ILendingPoolMock } from "./interfaces/ILendingPoolMock.sol";
 import { IBalancerVault } from "./interfaces/IBalancerVault.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -14,14 +14,14 @@ contract CreditModule {
                                CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    IChainlinkData public immutable DAI_USD_ORACLE;
+    IChainlinkData public immutable STETH_USD_ORACLE;
     IChainlinkData public immutable EURE_USD_ORACLE;
 
     uint256 public daiOracleDecimals;
     uint256 public eureOracleDecimals;
 
-    ERC4626 public immutable S_DAI;
-    ERC20 public immutable EUR_E;
+    ERC4626 public immutable STETH;
+    ERC20 public immutable EURE;
 
     address payable public eureVault;
     address public balancerVault = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
@@ -46,17 +46,16 @@ contract CreditModule {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    constructor(address oracleDAI, address oracleEURe, address sDAI_, address EURe_) {
-        DAI_USD_ORACLE = IChainlinkData(oracleDAI);
+    constructor(address oracleStETH, address oracleEURe, address stETH, address EURe_) {
+        STETH_USD_ORACLE = IChainlinkData(oracleStETH);
         EURE_USD_ORACLE = IChainlinkData(oracleEURe);
 
-        daiOracleDecimals = 10 ** DAI_USD_ORACLE.decimals();
+        daiOracleDecimals = 10 ** STETH_USD_ORACLE.decimals();
         eureOracleDecimals = 10 ** EURE_USD_ORACLE.decimals();
 
-        S_DAI = ERC4626(sDAI_);
-        EUR_E = ERC20(EURe_);
+        STETH = ERC20(stETH);
+        EURE = ERC20(EURe_);
 
-        vaultBalanceDiscountFactor = 7_000;
         fee = 100;
     }
 
@@ -64,12 +63,10 @@ contract CreditModule {
                                 LOGIC
     ////////////////////////////////////////////////////////////// */
 
-    function getConversionRateSDaiToEur() public view returns (uint256 conversionRate) {
-        uint256 sdaiToDai = S_DAI.convertToAssets(1e18);
-        (, int256 rate,,,) = DAI_USD_ORACLE.latestRoundData();
-        uint256 sdaiToUsd = (sdaiToDai * uint256(rate)) / daiOracleDecimals;
-        (, rate,,,) = EURE_USD_ORACLE.latestRoundData();
-        conversionRate = (sdaiToUsd * eureOracleDecimals) / uint256(rate);
+    function getConversionRateStETHToEur() public view returns (uint256 conversionRate) {
+        (, int256 stETHUSD,,,) = STETH_USD_ORACLE.latestRoundData();
+        (, int256 EUReUSD,,,) = EURE_USD_ORACLE.latestRoundData();
+        conversionRate = (stETHUSD * EUReUSD) / eureOracleDecimals;
     }
 
     function canSafePay(
