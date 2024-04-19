@@ -19,7 +19,7 @@ contract CreditModule {
 
     uint256 public oracleDecimals;
 
-    ERC4626 public immutable STETH;
+    ERC20 public immutable STETH;
     ERC20 public immutable EURE;
 
     address public lendingPool;
@@ -37,7 +37,6 @@ contract CreditModule {
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event VaultRefunded(uint256 indexed sdaiReceived, uint256 indexed eureRefunded);
     event PaidForSafe(address indexed safe, uint256 indexed amount, address indexed to);
 
     /* //////////////////////////////////////////////////////////////
