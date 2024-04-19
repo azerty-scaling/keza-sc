@@ -21,7 +21,7 @@ contract LendingPoolMock is ERC4626, Owned {
     address public STETH_ORACLE;
 
     ERC20 public immutable STETH;
-    
+
     /* //////////////////////////////////////////////////////////////
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
@@ -82,14 +82,19 @@ contract LendingPoolMock is ERC4626, Owned {
     function borrowFor(address borrower, uint256 amountToBorrow, uint256 collateralAmount) public onlyCreditModule {
         if (totalAssets() - totalBorrowed < amountToBorrow) revert NotEnoughFunds();
 
-        (, int256 rateCollateralUsd ,,,) = IChainlinkData(STETH_ORACLE).latestRoundData();
-        (, int256 rateEurUsd ,,,) = IChainlinkData(EUR_ORACLE).latestRoundData();
+        // Get collateral from Credit Module/ Safe
+        STETH.safeTransferFrom(msg.sender, address(this), collateralAmount);
+
+        (, int256 rateCollateralUsd,,,) = IChainlinkData(STETH_ORACLE).latestRoundData();
+        (, int256 rateEurUsd,,,) = IChainlinkData(EUR_ORACLE).latestRoundData();
 
         // In 18 decimals
-        uint256 collateralValueInUsd = uint256(rateCollateralUsd) * collateralAmount / IChainlinkData(STETH_ORACLE).decimals();
+        uint256 collateralValueInUsd =
+            uint256(rateCollateralUsd) * collateralAmount / IChainlinkData(STETH_ORACLE).decimals();
         // In 18 decimals
-        uint256 collateralValueInEur = collateralValueInUsd * uint256(rateEurUsd) / IChainlinkData(EUR_ORACLE).decimals();
-        // Discounted value 
+        uint256 collateralValueInEur =
+            collateralValueInUsd * IChainlinkData(EUR_ORACLE).decimals() / uint256(rateEurUsd);
+        // Discounted value
         uint256 discountedCollateralValue = collateralValueInEur * collateralFactor / BIPS;
 
         if (amountToBorrow > discountedCollateralValue) revert CollateralValueTooLow();
@@ -112,7 +117,7 @@ contract LendingPoolMock is ERC4626, Owned {
 
         uint256 collateralRetrieved = debtAmount * collateralBorrower[msg.sender] / openDebt;
 
-        // Get EURe with fees proportional to amount reimbursed 
+        // Get EURe with fees proportional to amount reimbursed
         asset.safeTransferFrom(msg.sender, address(this), debtAmount);
         // Send proportional collateral back to msg.sender
         STETH.safeTransfer(msg.sender, collateralRetrieved);
@@ -121,12 +126,13 @@ contract LendingPoolMock is ERC4626, Owned {
         debtBorrower[msg.sender] -= debtAmount;
         collateralBorrower[msg.sender] -= collateralRetrieved;
 
-        // Decrease totalBorrowed 
+        // Decrease totalBorrowed
         // TODO: remove fee part (we are decreasing too much here)
         totalBorrowed -= debtAmount;
     }
 
-    // TODO: If not paying after certain amount of time => then can take the funds back, sell them and reimburse the pool.
+    // TODO: If not paying after certain amount of time => then can take the funds back, sell them and reimburse the
+    // pool.
 
     function setCreditModule(address creditModule) external onlyOwner {
         CREDIT_MODULE = creditModule;
@@ -211,7 +217,12 @@ contract LendingPoolMock is ERC4626, Owned {
         uint256 assets,
         address receiver,
         address owner
-    ) public virtual override returns (uint256 shares) {
+    )
+        public
+        virtual
+        override
+        returns (uint256 shares)
+    {
         shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner) {
@@ -229,11 +240,7 @@ contract LendingPoolMock is ERC4626, Owned {
         asset.safeTransfer(receiver, assets);
     }
 
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) public virtual override returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address owner) public virtual override returns (uint256 assets) {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
@@ -242,7 +249,7 @@ contract LendingPoolMock is ERC4626, Owned {
 
         // Check for rounding error since we round down in previewRedeem.
         require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
-    
+
         // Recalculate the assets
         assets = previewRedeem(shares);
 
