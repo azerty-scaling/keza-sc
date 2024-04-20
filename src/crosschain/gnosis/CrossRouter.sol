@@ -57,6 +57,7 @@ contract CrossRouter {
         messages[0] = Message(STRATEGY_LOCK, DESTINATION_CHAIN_ID, kData);
 
         IYaho(YAHO).dispatchMessagesToAdapters(messages, messageRelays, adapters);
+        IAllowanceOracle(ALLOWANCE_ORACLE).decreaseAllowance(safe, amount);
         emit MessageDispatched(kMessage);
     }
 
@@ -75,6 +76,7 @@ contract CrossRouter {
         messages[0] = Message(STRATEGY_LOCK, DESTINATION_CHAIN_ID, kData);
 
         IYaho(YAHO).dispatchMessagesToAdapters(messages, messageRelays, adapters);
+        IAllowanceOracle(ALLOWANCE_ORACLE).increaseAllowance(safe, amount);
         emit MessageDispatched(kMessage);
     }
 }

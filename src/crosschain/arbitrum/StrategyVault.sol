@@ -197,6 +197,8 @@ contract StrategyVault is ERC4626, Owned {
         _mint(receiver, shares);
         initialDepositAmount[receiver] += assets;
 
+        // TODO: Add cross chain call to increase allowance for the user
+
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
@@ -226,6 +228,7 @@ contract StrategyVault is ERC4626, Owned {
         initialDepositAmount[owner] -= assets;
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        // TODO: Add cross chain call to decrease allowance for the user
 
         asset.safeTransfer(receiver, assets);
     }

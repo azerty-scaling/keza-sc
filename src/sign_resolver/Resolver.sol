@@ -108,6 +108,7 @@ contract Resolver {
 
         delete userSettings[originalSafe];
         emit AttestationReceived(attester, schemaId, attestationId);
+
     }
 
     function getUserSettings(address safe)

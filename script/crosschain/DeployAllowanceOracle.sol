@@ -11,7 +11,6 @@ contract DeployAllowanceOracle is PRBTest {
     address public CREDIT_MODULE = 0x0000000000000000000000000000000000000000;
     address public OFFCHAIN_ALLOWANCE_ORACLE = 0xbCc802BFb35C4CDC9cA1B3e0bc0EbfEf7d0DcDb1;
 
-
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));
         allowanceOracle = new AllowanceOracle(OFFCHAIN_ALLOWANCE_ORACLE, CREDIT_MODULE);

@@ -11,6 +11,7 @@ contract AllowanceOracle {
 
     address public OFFCHAIN_ALLOWANCE_ORACLE;
     address public CREDIT_MODULE;
+    address public CROSS_ROUTER;
     address public OWNER;
 
     /* //////////////////////////////////////////////////////////////
@@ -42,7 +43,7 @@ contract AllowanceOracle {
 
     modifier onlyTrustedParty() {
         require(
-            msg.sender == OFFCHAIN_ALLOWANCE_ORACLE || msg.sender == CREDIT_MODULE,
+            msg.sender == OFFCHAIN_ALLOWANCE_ORACLE || msg.sender == CREDIT_MODULE || msg.sender == CROSS_ROUTER,
             "Only the trusted party oracle can call this function"
         );
         _;
