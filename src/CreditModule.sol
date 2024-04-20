@@ -72,7 +72,7 @@ contract CreditModule {
         lendingPool = lendingPool_;
 
         fee = 100;
-        resolver = resolver;
+        resolver = resolver_;
         crossRouter = crossRouter_;
     }
 

@@ -15,7 +15,7 @@ contract DeployCrossChainGnosis is PRBTest {
 
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));
-        strategyVault = new StrategyVault(EURe, "NEXTPAY", "npwstETH", Yaru, CROSS_ROUTER, AARBWSTETH);
+        strategyVault = new StrategyVault(WSTETH, "NEXTPAY", "npwstETH", Yaru, CROSS_ROUTER, AARBWSTETH);
         vm.stopBroadcast();
     }
 }
