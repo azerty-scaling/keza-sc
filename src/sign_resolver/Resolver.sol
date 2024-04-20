@@ -125,8 +125,8 @@ contract Resolver {
         address originalSafe,
         address connectedSafe
     )
-    external
-    payable
+        external
+        payable
     {
         userSettings[originalSafe] = UserSettings(service, spendLimit, originalSafe, connectedSafe);
         emit AttestationReceived2(originalSafe, service, spendLimit);

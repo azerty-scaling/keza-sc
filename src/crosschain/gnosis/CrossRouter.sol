@@ -6,7 +6,7 @@ import { Message } from "hashi/packages/evm/contracts/interfaces/IMessage.sol";
 import { IYaho } from "hashi/packages/evm/contracts/interfaces/IYaho.sol";
 import { IAllowanceOracle } from "../interfaces/IAllowanceOracle.sol";
 
-contract LockRouter {
+contract CrossRouter {
     event MessageDispatched(KMessage);
 
     /* //////////////////////////////////////////////////////////////

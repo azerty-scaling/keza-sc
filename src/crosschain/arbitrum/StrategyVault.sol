@@ -11,7 +11,7 @@ import { FixedPointMathLib } from "@solmate/src/utils/FixedPointMathLib.sol";
 import { IYaru } from "../interfaces/IYaru.sol";
 import { SafeTransferLib } from "@solmate/src/utils/SafeTransferLib.sol";
 
-contract StrategyLock is ERC4626, Owned {
+contract StrategyVault is ERC4626, Owned {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
 

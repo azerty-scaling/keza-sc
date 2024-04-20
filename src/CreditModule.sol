@@ -5,6 +5,7 @@ import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IChainlinkData } from "./interfaces/IChainlinkData.sol";
 import { ILendingPool } from "./interfaces/ILendingPoolMock.sol";
+import { IResolver } from "./interfaces/IResolver.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract CreditModule {
@@ -22,6 +23,7 @@ contract CreditModule {
     ERC20 public immutable EURE;
 
     address public lendingPool;
+    address public resolver;
 
     uint256 public constant BIPS = 10_000;
 
