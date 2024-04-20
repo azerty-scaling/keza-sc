@@ -33,6 +33,7 @@ contract CreditModuleTest is PRBTest, StdCheats {
         // Instantiate contracts
         lendingPool = new LendingPoolMock(EURe, "LendingPool", "LP", stETH, oracleEURe, oracleStETH);
         creditModule = new CreditModule(oracleStETH, oracleEURe, stETH, EURe, address(lendingPool));
+        lendingPool.setCreditModule(address(creditModule));
     }
 
     function testFuzz_CreditModule_conversionRate() external {
@@ -41,7 +42,7 @@ contract CreditModuleTest is PRBTest, StdCheats {
         emit LogNamedUint256("Conversion rate stETH/EUR", conversionRate);
     }
 
-    function testFuzz_BorrowForSafe() public {
+    function testFuzz_canSafePay() public {
         // Create users
         address safe = createUser("safe");
         address lp = createUser("lp");
@@ -58,7 +59,42 @@ contract CreditModuleTest is PRBTest, StdCheats {
         // deal stETH to safe
         deal(stETH, safe, 1 * 1e18);
 
-        creditModule.canSafePay(safe, 1000 * 1e18);
+        (bool canPay, address currency,) = creditModule.canSafePay(safe, 1000 * 1e18);
 
+        assertEq(canPay, true);
+        assertEq(currency, stETH);
+    }
+
+    function testFuzz_borrowFor() public {
+        // Create users
+        address safe = createUser("safe");
+        address lp = createUser("lp");
+        address visa = createUser("visa");
+
+        uint256 lpAmount = 3000 * 1e18;
+        uint256 collateralAmount = 1 * 1e18;
+        uint256 amountToPay = 1000 * 1e18;
+
+        // safe should give approval to Credit Module
+        vm.prank(safe);
+        ERC20(stETH).approve(address(creditModule), type(uint256).max);
+
+        vm.prank(balancerVault);
+        ERC20(EURe).transfer(lp, lpAmount);
+
+        vm.startPrank(lp);
+        ERC20(EURe).approve(address(lendingPool), lpAmount);
+        lendingPool.deposit(lpAmount, lp);
+
+        // deal stETH to safe
+        deal(stETH, safe, collateralAmount);
+
+        (bool canPay, address currency, uint256 conversionRate) = creditModule.canSafePay(safe, amountToPay);
+
+        assertEq(canPay, true);
+        assertEq(currency, stETH);
+
+        // If safe can pay, borrow for safe
+        creditModule.pay(safe, amountToPay, currency, visa, conversionRate);
     }
 }

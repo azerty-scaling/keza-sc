@@ -115,9 +115,10 @@ contract CreditModule {
 
     function _payThroughCreditModule(address safe, uint256 amount, address to, uint256 conversionRate) internal {
         uint256 collateralFactor = BIPS * BIPS / ILendingPool(lendingPool).collateralFactor();
-        uint256 collateralAmount = collateralFactor * (amount * oracleDecimals / conversionRate) / BIPS;
+        uint256 collateralAmount = (collateralFactor * (amount * oracleDecimals / conversionRate) / BIPS);
 
         STETH.transferFrom(safe, address(this), collateralAmount);
+        STETH.approve(lendingPool, collateralAmount);
 
         // Get EURe from the Vault
         ILendingPool(lendingPool).borrowFor(safe, amount, collateralAmount);
