@@ -1,149 +1,93 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.22;
 
-import "./interfaces/IChainlinkData.sol";
+import { KMessage } from "../interfaces/IKMessage.sol";
 import { Owned } from "@solmate/src/auth/Owned.sol";
 import { ERC4626 } from "@solmate/src/mixins/ERC4626.sol";
-import { ERC20 } from "@solmate/src/tokens/ERC20.sol";
-import { FixedPointMathLib } from "@solmate/src/utils/FixedPointMathLib.sol";
-import { SafeTransferLib } from "@solmate/src/utils/SafeTransferLib.sol";
+import { IStrategy } from "../interfaces/IStrategy.sol";
+import { IStrategyToken } from "../interfaces/IStrategyToken.sol";
 
-contract LendingPoolMock is ERC4626, Owned {
-    using FixedPointMathLib for uint256;
-    using SafeTransferLib for ERC20;
+contract StrategyLock is ERC4626, Owned {
+    /* //////////////////////////////////////////////////////////////
+                               ERRORS
+    ////////////////////////////////////////////////////////////// */
+    error NotLockRouter(address sender, address expectedRouter);
+    error MessageAlreadyProcessed(KMessage message);
 
     /* //////////////////////////////////////////////////////////////
-                                CONSTANTS
+                               EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    address public CREDIT_MODULE;
-    address public EUR_ORACLE;
-    address public STETH_ORACLE;
-
-    ERC20 public immutable STETH;
+    event MessageProcessed(KMessage);
 
     /* //////////////////////////////////////////////////////////////
-                                STORAGE
+                               CONSTANTS
     ////////////////////////////////////////////////////////////// */
+    uint16 public constant LOCK = 1;
+    uint16 public constant UNLOCK = 2;
 
-    mapping(address borrower => uint256 debt) public debtBorrower;
-    mapping(address borrower => uint256 collateral) public collateralBorrower;
+    address public constant YARU;
+    address public constant LOCK_ROUTER;
 
-    // Collateral factor in BIPS
-    uint256 public collateralFactor = 5000;
-    uint256 public totalBorrowed;
-    uint256 public fee = 100;
-    uint256 public BIPS = 10_000;
+    IStrategyToken public immutable STRATEGY_TOKEN;
+    IStrategy public immutable STRATEGY;
 
     /* //////////////////////////////////////////////////////////////
-                                EVENTS
+                               STORAGE
     ////////////////////////////////////////////////////////////// */
+
+    mapping(bytes32 => bool) private _processedMessages;
+    mapping(address => uint256) public lockedAmount;
 
     /* //////////////////////////////////////////////////////////////
-                                ERRORS
+                               CONSTRUCT
     ////////////////////////////////////////////////////////////// */
 
-    error NotEnoughFunds();
-    error CollateralValueTooLow();
-    error NoRemainingDebt();
-
-    /* //////////////////////////////////////////////////////////////
-                                MODIFIERS
-    ////////////////////////////////////////////////////////////// */
-
-    modifier onlyCreditModule() {
-        require(msg.sender == CREDIT_MODULE, "LendingPool: Only Credit Module can call this function");
-        _;
-    }
-
-    /* //////////////////////////////////////////////////////////////
-                                CONSTRUCTOR
-    ////////////////////////////////////////////////////////////// */
     constructor(
         address underlyingAsset_,
         string memory name_,
         string memory symbol_,
-        address stETH,
-        address eurOracle,
-        address stETHOracle
+        address yaru,
+        address lockRouter,
+        address strategyToken
     )
         ERC4626(ERC20(underlyingAsset_), name_, symbol_)
         Owned(msg.sender)
     {
-        STETH = ERC20(stETH);
-        EUR_ORACLE = eurOracle;
-        STETH_ORACLE = stETHOracle;
+        YARU = yaru;
+        LOCK_ROUTER = lockRouter;
+        STRATEGY_TOKEN = IStrategyToken(strategyToken);
+        STRATEGY = IStrategy(IStrategyToken(strategyToken).POOL());
     }
 
     /* //////////////////////////////////////////////////////////////
-                                LOGIC
+                               ADMIN
     ////////////////////////////////////////////////////////////// */
 
-    function borrowFor(address borrower, uint256 amountToBorrow, uint256 collateralAmount) public onlyCreditModule {
-        if (totalAssets() - totalBorrowed < amountToBorrow) revert NotEnoughFunds();
-
-        (, int256 rateCollateralUsd,,,) = IChainlinkData(STETH_ORACLE).latestRoundData();
-        (, int256 rateEurUsd,,,) = IChainlinkData(EUR_ORACLE).latestRoundData();
-
-        // In 18 decimals
-        uint256 collateralValueInUsd =
-            uint256(rateCollateralUsd) * collateralAmount / IChainlinkData(STETH_ORACLE).decimals();
-        // In 18 decimals
-        uint256 collateralValueInEur =
-            collateralValueInUsd * uint256(rateEurUsd) / IChainlinkData(EUR_ORACLE).decimals();
-        // Discounted value
-        uint256 discountedCollateralValue = collateralValueInEur * collateralFactor / BIPS;
-
-        if (amountToBorrow > discountedCollateralValue) revert CollateralValueTooLow();
-
-        // Update accounting of borrowed amount
-        totalBorrowed += amountToBorrow;
-
-        // Update accounting for borrower
-        uint256 fee_ = amountToBorrow * fee / BIPS;
-        debtBorrower[borrower] += amountToBorrow + fee_;
-        collateralBorrower[borrower] += collateralAmount;
-
-        // Transfer assets to Credit Module
-        asset.safeTransfer(msg.sender, amountToBorrow);
+    function setLockRouter(address lockRouter) external onlyOwner {
+        LOCK_ROUTER = lockRouter;
     }
 
-    function reimburse(uint256 debtAmount) external {
-        uint256 openDebt = debtBorrower[msg.sender];
-        if (openDebt == 0) revert NoRemainingDebt();
-
-        uint256 collateralRetrieved = debtAmount * collateralBorrower[msg.sender] / openDebt;
-
-        // Get EURe with fees proportional to amount reimbursed
-        asset.safeTransferFrom(msg.sender, address(this), debtAmount);
-        // Send proportional collateral back to msg.sender
-        STETH.safeTransfer(msg.sender, collateralRetrieved);
-
-        // Update accounting for borrower
-        debtBorrower[msg.sender] -= debtAmount;
-        collateralBorrower[msg.sender] -= collateralRetrieved;
-
-        // Decrease totalBorrowed
-        // TODO: remove fee part (we are decreasing too much here)
-        totalBorrowed -= debtAmount;
-    }
-
-    // TODO: If not paying after certain amount of time => then can take the funds back, sell them and reimburse the
-    // pool.
-
-    function setCreditModule(address creditModule) external onlyOwner {
-        CREDIT_MODULE = creditModule;
+    function setYaru(address yaru) external onlyOwner {
+        YARU = yaru;
     }
 
     function refund(address token, address receiver) public {
+        uint256 strategyTokenBalance = STRATEGY_TOKEN.balanceOf(address(this));
+        STRATEGY.withdraw(address(asset), strategyTokenBalance, address(this));
+
         uint256 balance = ERC20(token).balanceOf(address(this));
         if (balance > 0) {
             ERC20(token).transfer(receiver, balance);
         }
     }
 
-    function totalAssets() public view override returns (uint256) {
-        return asset.balanceOf(address(this)) + totalBorrowed;
+    /* //////////////////////////////////////////////////////////////
+                               HELPERS
+    ////////////////////////////////////////////////////////////// */
+
+    function getMessageId(KMessage calldata message) public pure returns (bytes32) {
+        return keccak256(abi.encode(message));
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -200,6 +144,42 @@ contract LendingPoolMock is ERC4626, Owned {
     //////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////
 
+    /* //////////////////////////////////////////////////////////////
+                         CROSS CHAIN LOGIC
+    ////////////////////////////////////////////////////////////// */
+
+    function onMessage(KMessage calldata message) external {
+        if (msg.sender != YARU) revert NotYaru(msg.sender, YARU);
+        address router = IYaru(YARU).sender();
+        if (router != LOCKROUTER) revert NotLockRouter(router, LOCKROUTER);
+
+        bytes32 messageId = getMessageId(message);
+        if (_processedMessages[messageId]) revert MessageAlreadyProcessed(message);
+        _processedMessages[messageId] = true;
+
+        if (message.action == LOCK) {
+            _lock(message.to, message.amount);
+        } else if (message.action == UNLOCK) {
+            _unlock(message.to, message.amount);
+        }
+
+        emit MessageProcessed(message);
+    }
+
+    function _lock(address owner, uint256 amount) internal {
+        require(balanceOf(owner) >= amount, "StrategyLock: Not enough shares to lock");
+        lockedAmount[owner] += amount;
+    }
+
+    function _unlock(address owner, uint256 amount) internal {
+        require(lockedAmount[owner] >= amount, "StrategyLock: Not enough locked amount");
+        lockedAmount[owner] -= amount;
+    }
+
+    /* //////////////////////////////////////////////////////////////
+                                  LOGIC
+    ////////////////////////////////////////////////////////////// */
+
     function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
@@ -220,6 +200,8 @@ contract LendingPoolMock is ERC4626, Owned {
         override
         returns (uint256 shares)
     {
+        require(balanceOf(owner) - lockedAmount[owner] >= assets, "Not enough shares to withdraw");
+
         shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner) {
@@ -227,28 +209,6 @@ contract LendingPoolMock is ERC4626, Owned {
 
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
-
-        beforeWithdraw(assets, shares);
-
-        _burn(owner, shares);
-
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
-
-        asset.safeTransfer(receiver, assets);
-    }
-
-    function redeem(uint256 shares, address receiver, address owner) public virtual override returns (uint256 assets) {
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
-
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
-        }
-
-        // Check for rounding error since we round down in previewRedeem.
-        require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
-
-        // Recalculate the assets
-        assets = previewRedeem(shares);
 
         beforeWithdraw(assets, shares);
 

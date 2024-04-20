@@ -1,13 +1,14 @@
 {
-  "name": "@Azerty-Global/azerty_sc",
+  "name": "@Azerty-Scaling/keza_sc",
   "description": "",
   "version": "1.0.0",
   "author": {
-    "name": "Azerty-Global",
-    "url": "https://github.com/Azerty-Global"
+    "name": "Azerty-Scaling",
+    "url": "https://github.com/Azerty-Scaling"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.1",
+    "hashi": "github:gnosis/hashi#v0.1.1",
     "solmate": "^6.2.0"
   },
   "devDependencies": {
