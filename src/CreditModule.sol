@@ -4,7 +4,7 @@ pragma solidity >=0.8.22;
 import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IChainlinkData } from "./interfaces/IChainlinkData.sol";
-import { IVault } from "./interfaces/IVault.sol";
+import { ILendingPool } from "./interfaces/ILendingPoolMock.sol";
 import { IBalancerVault } from "./interfaces/IBalancerVault.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -14,16 +14,15 @@ contract CreditModule {
                                CONSTANTS
     ////////////////////////////////////////////////////////////// */
 
-    IChainlinkData public immutable DAI_USD_ORACLE;
+    IChainlinkData public immutable STETH_USD_ORACLE;
     IChainlinkData public immutable EURE_USD_ORACLE;
 
-    uint256 public daiOracleDecimals;
-    uint256 public eureOracleDecimals;
+    uint256 public oracleDecimals;
 
-    ERC4626 public immutable S_DAI;
-    ERC20 public immutable EUR_E;
+    ERC20 public immutable STETH;
+    ERC20 public immutable EURE;
 
-    address payable public eureVault;
+    address public lendingPool;
     address public balancerVault = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
 
     uint256 public constant BIPS = 10_000;
@@ -32,31 +31,36 @@ contract CreditModule {
                                 STORAGE
     ////////////////////////////////////////////////////////////// */
 
-    uint256 public vaultBalanceDiscountFactor;
     uint256 public fee;
 
     /* //////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////// */
 
-    event VaultRefunded(uint256 indexed sdaiReceived, uint256 indexed eureRefunded);
     event PaidForSafe(address indexed safe, uint256 indexed amount, address indexed to);
+
+    /* //////////////////////////////////////////////////////////////
+                                ERRORS
+    ////////////////////////////////////////////////////////////// */
+
+    error NotEnoughFundsInLP();
 
     /* //////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    constructor(address oracleDAI, address oracleEURe, address sDAI_, address EURe_) {
-        DAI_USD_ORACLE = IChainlinkData(oracleDAI);
+    constructor(address oracleStETH, address oracleEURe, address stETH, address EURe_, address lendingPool_) {
+        STETH_USD_ORACLE = IChainlinkData(oracleStETH);
         EURE_USD_ORACLE = IChainlinkData(oracleEURe);
 
-        daiOracleDecimals = 10 ** DAI_USD_ORACLE.decimals();
-        eureOracleDecimals = 10 ** EURE_USD_ORACLE.decimals();
+        // They both have 8 decimals precision
+        oracleDecimals = 10 ** STETH_USD_ORACLE.decimals();
 
-        S_DAI = ERC4626(sDAI_);
-        EUR_E = ERC20(EURe_);
+        STETH = ERC20(stETH);
+        EURE = ERC20(EURe_);
 
-        vaultBalanceDiscountFactor = 7_000;
+        lendingPool = lendingPool_;
+
         fee = 100;
     }
 
@@ -64,12 +68,11 @@ contract CreditModule {
                                 LOGIC
     ////////////////////////////////////////////////////////////// */
 
-    function getConversionRateSDaiToEur() public view returns (uint256 conversionRate) {
-        uint256 sdaiToDai = S_DAI.convertToAssets(1e18);
-        (, int256 rate,,,) = DAI_USD_ORACLE.latestRoundData();
-        uint256 sdaiToUsd = (sdaiToDai * uint256(rate)) / daiOracleDecimals;
-        (, rate,,,) = EURE_USD_ORACLE.latestRoundData();
-        conversionRate = (sdaiToUsd * eureOracleDecimals) / uint256(rate);
+    function getConversionRateStETHToEur() public view returns (uint256 conversionRate) {
+        // Both oracles have 8 decimals precision
+        (, int256 stETHUSD,,,) = STETH_USD_ORACLE.latestRoundData();
+        (, int256 EUReUSD,,,) = EURE_USD_ORACLE.latestRoundData();
+        conversionRate = (uint256(stETHUSD) * oracleDecimals) / uint256(EUReUSD);
     }
 
     function canSafePay(
@@ -81,82 +84,56 @@ contract CreditModule {
         returns (bool canPay, address currency, uint256 conversionRate)
     {
         // Pay directly with EURe if enough balance
-        if (EUR_E.balanceOf(safe) >= amount) return (true, address(EUR_E), 0);
+        if (EURE.balanceOf(safe) >= amount) return (true, address(EURE), 0);
 
-        // If enough SDAI balance in Safe to repay at current rate and CreditModule holds enough funds =>  CreditModule
-        // will advance the EURe.
-        uint256 sdaiBalance = S_DAI.balanceOf(safe);
-        uint256 sdaiToEureRate = getConversionRateSDaiToEur();
-        uint256 eureAmount = (sdaiBalance * sdaiToEureRate) / 1e18;
+        // Revert if not enough available liquidity in lending pool
+        if (EURE.balanceOf(lendingPool) < amount) return (false, address(0), 0);
 
-        // Calculate fee, Safe should also be able to pay back the fee
-        uint256 eureAmountToSDai = (amount * 1e18) / sdaiToEureRate;
-        uint256 fee_ = (fee * eureAmountToSDai) / BIPS;
-        if (sdaiBalance < eureAmountToSDai + fee_) return (false, address(0), 0);
+        // If enough STETH balance in Safe to borrow at current rate and LendingPool holds enough funds => Borrow EURe
+        uint256 stETHBalance = STETH.balanceOf(safe);
+        uint256 stETHToEureRate = getConversionRateStETHToEur();
+        uint256 eureValue = stETHBalance * stETHToEureRate / oracleDecimals;
 
-        uint256 eureAvailableInVault = EUR_E.balanceOf(eureVault);
-        uint256 eureDiscountedAmount = eureAvailableInVault * vaultBalanceDiscountFactor / BIPS;
+        // Discount the eureValue with collateral factor of lendingPool
+        uint256 borrowableEurE = eureValue * ILendingPool(lendingPool).collateralFactor() / BIPS;
+        if (borrowableEurE < amount) return (false, address(0), 0);
 
-        if (eureAmount >= amount && eureDiscountedAmount >= amount) return (true, address(S_DAI), sdaiToEureRate);
+        if (borrowableEurE >= amount) return (true, address(STETH), stETHToEureRate);
 
         // If none of the above valid, Safe can't pay.
         return (false, address(0), 0);
     }
 
     function pay(address safe, uint256 amount, address currency, address to, uint256 conversionRate) external {
-        if (currency == address(EUR_E)) _payThroughSafe(safe, amount, to);
-        if (currency == address(S_DAI)) _payThroughCreditModule(safe, amount, to, conversionRate);
+        if (currency == address(EURE)) _payThroughSafe(safe, amount, to);
+        if (currency == address(STETH)) _payThroughCreditModule(safe, amount, to, conversionRate);
     }
 
     function _payThroughSafe(address safe, uint256 amount, address to) internal {
-        EUR_E.safeTransferFrom(safe, to, amount);
+        EURE.safeTransferFrom(safe, to, amount);
     }
 
     function _payThroughCreditModule(address safe, uint256 amount, address to, uint256 conversionRate) internal {
+        uint256 collateralFactor = BIPS * BIPS / ILendingPool(lendingPool).collateralFactor();
+        uint256 collateralAmount = (collateralFactor * (amount * oracleDecimals / conversionRate) / BIPS);
+
+        STETH.transferFrom(safe, address(this), collateralAmount);
+        STETH.approve(lendingPool, collateralAmount);
+
         // Get EURe from the Vault
-        IVault(eureVault).flashCredit(amount);
+        ILendingPool(lendingPool).borrowFor(safe, amount, collateralAmount);
 
         // Pay with EURe for the Safe
-        EUR_E.transfer(to, amount);
+        EURE.transfer(to, amount);
 
         emit PaidForSafe(safe, amount, to);
-
-        // Get SDAI + fee from the Safe
-        uint256 eureAmountToSDai = (amount * 1e18) / conversionRate;
-        uint256 fee_ = (fee * eureAmountToSDai) / BIPS;
-        uint256 sdaiAmountWithFee = eureAmountToSDai + fee_;
-
-        S_DAI.transferFrom(safe, address(this), sdaiAmountWithFee);
-
-        // Swap SDAI to EURe
-        IBalancerVault.SingleSwap memory singleSwap = IBalancerVault.SingleSwap({
-            poolId: 0xdd439304a77f54b1f7854751ac1169b279591ef7000000000000000000000064,
-            kind: IBalancerVault.SwapKind.GIVEN_IN,
-            assetIn: address(S_DAI),
-            assetOut: address(EUR_E),
-            amount: sdaiAmountWithFee,
-            userData: ""
-        });
-
-        // Amount is swapped directly to Vault
-        IBalancerVault.FundManagement memory funds = IBalancerVault.FundManagement({
-            sender: address(this),
-            fromInternalBalance: false,
-            recipient: eureVault,
-            toInternalBalance: false
-        });
-
-        S_DAI.approve(balancerVault, sdaiAmountWithFee);
-        uint256 eureRefunded = IBalancerVault(balancerVault).swap(singleSwap, funds, 0, block.timestamp);
-
-        emit VaultRefunded(sdaiAmountWithFee, eureRefunded);
     }
 
     /* //////////////////////////////////////////////////////////////
                                 LOGIC
     ////////////////////////////////////////////////////////////// */
-    function setEureVault(address eureVault_) external {
-        eureVault = payable(eureVault_);
+    function setLendingPool(address lendingPool_) external {
+        lendingPool = lendingPool_;
     }
 
     function setFee(uint256 newFee) external {
