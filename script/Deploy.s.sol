@@ -16,7 +16,9 @@ contract Deploy is PRBTest {
 
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));
-
+        lendingPool = new LendingPoolMock(EURe, "LendingPool", "LP", stETH, oracleEURe, oracleStETH);
+        creditModule = new CreditModule(oracleStETH, oracleEURe, stETH, EURe, address(lendingPool));
+        lendingPool.setCreditModule(address(creditModule));
         vm.stopBroadcast();
     }
 }
