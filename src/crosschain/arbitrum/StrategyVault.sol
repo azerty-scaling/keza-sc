@@ -18,7 +18,7 @@ contract StrategyVault is ERC4626, Owned {
     /* //////////////////////////////////////////////////////////////
                                ERRORS
     ////////////////////////////////////////////////////////////// */
-    error NotLockRouter(address sender, address expectedRouter);
+    error NotCrossRouter(address sender, address expectedRouter);
     error MessageAlreadyProcessed(KMessage message);
     error NotYaru(address caller, address expectedYaru);
 
@@ -35,7 +35,7 @@ contract StrategyVault is ERC4626, Owned {
     uint16 public constant UNLOCK = 2;
 
     address public YARU;
-    address public LOCK_ROUTER;
+    address public CROSS_ROUTER;
 
     IStrategyToken public immutable STRATEGY_TOKEN;
     IStrategy public immutable STRATEGY;
@@ -57,14 +57,14 @@ contract StrategyVault is ERC4626, Owned {
         string memory name_,
         string memory symbol_,
         address yaru,
-        address lockRouter,
+        address crossRouter,
         address strategyToken
     )
         ERC4626(ERC20(underlyingAsset_), name_, symbol_)
         Owned(msg.sender)
     {
         YARU = yaru;
-        LOCK_ROUTER = lockRouter;
+        CROSS_ROUTER = crossRouter;
         STRATEGY_TOKEN = IStrategyToken(strategyToken);
         STRATEGY = IStrategy(IStrategyToken(strategyToken).POOL());
     }
@@ -73,8 +73,8 @@ contract StrategyVault is ERC4626, Owned {
                                ADMIN
     ////////////////////////////////////////////////////////////// */
 
-    function setLockRouter(address lockRouter) external onlyOwner {
-        LOCK_ROUTER = lockRouter;
+    function setCrossRouter(address crossRouter) external onlyOwner {
+        CROSS_ROUTER = crossRouter;
     }
 
     function setYaru(address yaru) external onlyOwner {
@@ -160,7 +160,7 @@ contract StrategyVault is ERC4626, Owned {
     function onMessage(KMessage calldata message) external {
         if (msg.sender != YARU) revert NotYaru(msg.sender, YARU);
         address router = IYaru(YARU).sender();
-        if (router != LOCK_ROUTER) revert NotLockRouter(router, LOCK_ROUTER);
+        if (router != CROSS_ROUTER) revert NotCrossRouter(router, CROSS_ROUTER);
 
         bytes32 messageId = getMessageId(message);
         if (_processedMessages[messageId]) revert MessageAlreadyProcessed(message);

@@ -23,18 +23,25 @@ contract CrossRouter {
     address public YAHO;
     address public MESSAGE_RELAYER;
     address public ADAPTER;
-    address public STRATEGY_LOCK;
+    address public STRATEGY_VAULT;
     address public ALLOWANCE_ORACLE;
+
+    address public OWNER;
 
     /* //////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    constructor(address yaho, address messageRelayer, address adapter, address strategyLock, address allowanceOracle) {
+    constructor(address yaho, address messageRelayer, address adapter, address strategyVault) {
         YAHO = yaho;
         MESSAGE_RELAYER = messageRelayer;
         ADAPTER = adapter;
-        STRATEGY_LOCK = strategyLock;
+        STRATEGY_VAULT = strategyVault;
+        OWNER = msg.sender;
+    }
+
+    function setAllowanceOracle(address allowanceOracle) external {
+        require(msg.sender == OWNER, "Only the owner can call this function");
         ALLOWANCE_ORACLE = allowanceOracle;
     }
 
@@ -54,7 +61,7 @@ contract CrossRouter {
         adapters[0] = ADAPTER;
 
         Message[] memory messages = new Message[](1);
-        messages[0] = Message(STRATEGY_LOCK, DESTINATION_CHAIN_ID, kData);
+        messages[0] = Message(STRATEGY_VAULT, DESTINATION_CHAIN_ID, kData);
 
         IYaho(YAHO).dispatchMessagesToAdapters(messages, messageRelays, adapters);
         IAllowanceOracle(ALLOWANCE_ORACLE).decreaseAllowance(safe, amount);
@@ -73,7 +80,7 @@ contract CrossRouter {
         adapters[0] = ADAPTER;
 
         Message[] memory messages = new Message[](1);
-        messages[0] = Message(STRATEGY_LOCK, DESTINATION_CHAIN_ID, kData);
+        messages[0] = Message(STRATEGY_VAULT, DESTINATION_CHAIN_ID, kData);
 
         IYaho(YAHO).dispatchMessagesToAdapters(messages, messageRelays, adapters);
         IAllowanceOracle(ALLOWANCE_ORACLE).increaseAllowance(safe, amount);

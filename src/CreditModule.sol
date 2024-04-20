@@ -57,7 +57,8 @@ contract CreditModule {
         address stETH,
         address EURe_,
         address lendingPool_,
-        address resolver
+        address resolver_,
+        address crossRouter_
     ) {
         STETH_USD_ORACLE = IChainlinkData(oracleStETH);
         EURE_USD_ORACLE = IChainlinkData(oracleEURe);
@@ -71,6 +72,8 @@ contract CreditModule {
         lendingPool = lendingPool_;
 
         fee = 100;
+        resolver = resolver;
+        crossRouter = crossRouter_;
     }
 
     /* //////////////////////////////////////////////////////////////
@@ -113,7 +116,14 @@ contract CreditModule {
         }
     }
 
-    function _canSafePayGnosis(address safe, uint256 amount) internal view returns (bool canPay, address currency, uint256 conversionRate) {
+    function _canSafePayGnosis(
+        address safe,
+        uint256 amount
+    )
+        internal
+        view
+        returns (bool canPay, address currency, uint256 conversionRate)
+    {
         // If enough STETH balance in Safe to borrow at current rate and LendingPool holds enough funds => Borrow EURe
         uint256 stETHBalance = STETH.balanceOf(safe);
         uint256 stETHToEureRate = getConversionRateStETHToEur();
@@ -129,7 +139,14 @@ contract CreditModule {
         return (false, address(0), 0);
     }
 
-    function _canSafePayArbitrum(address safe, uint256 amount) internal view returns (bool canPay, address currency, uint256 conversionRate) {
+    function _canSafePayArbitrum(
+        address safe,
+        uint256 amount
+    )
+        internal
+        view
+        returns (bool canPay, address currency, uint256 conversionRate)
+    {
         // If enough STETH balance in Safe to borrow at current rate and LendingPool holds enough funds => Borrow EURe
         uint256 stETHToEureRate = getConversionRateStETHToEur();
         // 6 and 5 is for the safety threshold of the cross chain action

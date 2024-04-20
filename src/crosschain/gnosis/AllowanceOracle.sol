@@ -31,9 +31,10 @@ contract AllowanceOracle {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    constructor(address offchainAllowanceOracle, address creditModule) {
+    constructor(address offchainAllowanceOracle, address creditModule, address crossRouter) {
         OFFCHAIN_ALLOWANCE_ORACLE = offchainAllowanceOracle;
         CREDIT_MODULE = creditModule;
+        CROSS_ROUTER = crossRouter;
     }
 
     modifier onlyOwner() {

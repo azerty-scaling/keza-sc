@@ -8,7 +8,7 @@ import { ERC20 } from "@solmate/src/tokens/ERC20.sol";
 import { FixedPointMathLib } from "@solmate/src/utils/FixedPointMathLib.sol";
 import { SafeTransferLib } from "@solmate/src/utils/SafeTransferLib.sol";
 
-contract LendingPoolMock is ERC4626, Owned {
+contract LendingPool is ERC4626, Owned {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for ERC20;
 
