@@ -15,7 +15,7 @@ contract Deploy is PRBTest {
     address public stETH = 0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6;
     address public EURe = 0xcB444e90D8198415266c6a2724b7900fb12FC56E;
     address public RESOLVER = 0x8AD7D1E0c10F81Bcc7CdF2AA72DeEa8Dccc8b8AD;
-    address public CROSS_ROUTER = 0x0000000000000000000000000000000000000000;
+    address public CROSS_ROUTER = 0x7B72dF4B7FEaF1653224043d06d9067a77dab04D;
 
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));
