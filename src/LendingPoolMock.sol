@@ -82,6 +82,9 @@ contract LendingPoolMock is ERC4626, Owned {
     function borrowFor(address borrower, uint256 amountToBorrow, uint256 collateralAmount) public onlyCreditModule {
         if (totalAssets() - totalBorrowed < amountToBorrow) revert NotEnoughFunds();
 
+        // Get collateral from Credit Module/ Safe
+        STETH.safeTransferFrom(msg.sender, address(this), collateralAmount);
+
         (, int256 rateCollateralUsd,,,) = IChainlinkData(STETH_ORACLE).latestRoundData();
         (, int256 rateEurUsd,,,) = IChainlinkData(EUR_ORACLE).latestRoundData();
 
@@ -90,7 +93,7 @@ contract LendingPoolMock is ERC4626, Owned {
             uint256(rateCollateralUsd) * collateralAmount / IChainlinkData(STETH_ORACLE).decimals();
         // In 18 decimals
         uint256 collateralValueInEur =
-            collateralValueInUsd * uint256(rateEurUsd) / IChainlinkData(EUR_ORACLE).decimals();
+            collateralValueInUsd * IChainlinkData(EUR_ORACLE).decimals() / uint256(rateEurUsd);
         // Discounted value
         uint256 discountedCollateralValue = collateralValueInEur * collateralFactor / BIPS;
 
