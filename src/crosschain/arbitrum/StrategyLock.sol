@@ -4,15 +4,23 @@ pragma solidity >=0.8.22;
 import { KMessage } from "../interfaces/IKMessage.sol";
 import { Owned } from "@solmate/src/auth/Owned.sol";
 import { ERC4626 } from "@solmate/src/mixins/ERC4626.sol";
+import { ERC20 } from "@solmate/src/tokens/ERC20.sol";
 import { IStrategy } from "../interfaces/IStrategy.sol";
 import { IStrategyToken } from "../interfaces/IStrategyToken.sol";
+import { FixedPointMathLib } from "@solmate/src/utils/FixedPointMathLib.sol";
+import { IYaru } from "../interfaces/IYaru.sol";
+import { SafeTransferLib } from "@solmate/src/utils/SafeTransferLib.sol";
 
 contract StrategyLock is ERC4626, Owned {
+    using FixedPointMathLib for uint256;
+    using SafeTransferLib for ERC20;
+
     /* //////////////////////////////////////////////////////////////
                                ERRORS
     ////////////////////////////////////////////////////////////// */
     error NotLockRouter(address sender, address expectedRouter);
     error MessageAlreadyProcessed(KMessage message);
+    error NotYaru(address caller, address expectedYaru);
 
     /* //////////////////////////////////////////////////////////////
                                EVENTS
@@ -26,8 +34,8 @@ contract StrategyLock is ERC4626, Owned {
     uint16 public constant LOCK = 1;
     uint16 public constant UNLOCK = 2;
 
-    address public constant YARU;
-    address public constant LOCK_ROUTER;
+    address public YARU;
+    address public LOCK_ROUTER;
 
     IStrategyToken public immutable STRATEGY_TOKEN;
     IStrategy public immutable STRATEGY;
@@ -38,6 +46,7 @@ contract StrategyLock is ERC4626, Owned {
 
     mapping(bytes32 => bool) private _processedMessages;
     mapping(address => uint256) public lockedAmount;
+    mapping(address => uint256) public initialDepositAmount;
 
     /* //////////////////////////////////////////////////////////////
                                CONSTRUCT
@@ -151,7 +160,7 @@ contract StrategyLock is ERC4626, Owned {
     function onMessage(KMessage calldata message) external {
         if (msg.sender != YARU) revert NotYaru(msg.sender, YARU);
         address router = IYaru(YARU).sender();
-        if (router != LOCKROUTER) revert NotLockRouter(router, LOCKROUTER);
+        if (router != LOCK_ROUTER) revert NotLockRouter(router, LOCK_ROUTER);
 
         bytes32 messageId = getMessageId(message);
         if (_processedMessages[messageId]) revert MessageAlreadyProcessed(message);
@@ -167,7 +176,7 @@ contract StrategyLock is ERC4626, Owned {
     }
 
     function _lock(address owner, uint256 amount) internal {
-        require(balanceOf(owner) >= amount, "StrategyLock: Not enough shares to lock");
+        require(initialDepositAmount[owner] - lockedAmount[owner] >= amount, "StrategyLock: Not enough shares to lock");
         lockedAmount[owner] += amount;
     }
 
@@ -186,6 +195,7 @@ contract StrategyLock is ERC4626, Owned {
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
         _mint(receiver, shares);
+        initialDepositAmount[receiver] += assets;
 
         emit Deposit(msg.sender, receiver, assets, shares);
     }
@@ -200,7 +210,7 @@ contract StrategyLock is ERC4626, Owned {
         override
         returns (uint256 shares)
     {
-        require(balanceOf(owner) - lockedAmount[owner] >= assets, "Not enough shares to withdraw");
+        require(initialDepositAmount[owner] - lockedAmount[owner] >= assets, "Not enough shares to withdraw");
 
         shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
 
@@ -213,9 +223,14 @@ contract StrategyLock is ERC4626, Owned {
         beforeWithdraw(assets, shares);
 
         _burn(owner, shares);
+        initialDepositAmount[owner] -= assets;
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         asset.safeTransfer(receiver, assets);
+    }
+
+    function totalAssets() public view override returns (uint256 assets) {
+        assets = asset.balanceOf(address(this));
     }
 }

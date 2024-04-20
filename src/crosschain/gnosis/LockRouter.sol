@@ -7,11 +7,15 @@ import { IYaho } from "hashi/packages/evm/contracts/interfaces/IYaho.sol";
 import { IAllowanceOracle } from "../interfaces/IAllowanceOracle.sol";
 
 contract LockRouter {
+    event MessageDispatched(KMessage);
+
     /* //////////////////////////////////////////////////////////////
                                CONSTANTS
     ////////////////////////////////////////////////////////////// */
     uint16 public constant LOCK = 1;
     uint16 public constant UNLOCK = 2;
+
+    uint16 public DESTINATION_CHAIN_ID = 42_161;
 
     /* //////////////////////////////////////////////////////////////
                                CONSTANTS
@@ -42,7 +46,7 @@ contract LockRouter {
         bytes32 salt = keccak256(abi.encodePacked(blockhash(block.number - 1), gasleft()));
 
         KMessage memory kMessage = KMessage({ salt: salt, action: LOCK, to: safe, amount: amount });
-        bytes memory sjData = abi.encodeWithSignature("onMessage((bytes32,uint16,address,uint256))", kMessage);
+        bytes memory kData = abi.encodeWithSignature("onMessage((bytes32,uint16,address,uint256))", kMessage);
 
         address[] memory messageRelays = new address[](0);
         messageRelays[0] = MESSAGE_RELAYER;
@@ -50,7 +54,7 @@ contract LockRouter {
         adapters[0] = ADAPTER;
 
         Message[] memory messages = new Message[](1);
-        messages[0] = Message(STRATEGY_LOCK, destinationChainId, sjData);
+        messages[0] = Message(STRATEGY_LOCK, DESTINATION_CHAIN_ID, kData);
 
         IYaho(YAHO).dispatchMessagesToAdapters(messages, messageRelays, adapters);
         emit MessageDispatched(kMessage);
@@ -60,7 +64,7 @@ contract LockRouter {
         bytes32 salt = keccak256(abi.encodePacked(blockhash(block.number - 1), gasleft()));
 
         KMessage memory kMessage = KMessage({ salt: salt, action: UNLOCK, to: safe, amount: amount });
-        bytes memory sjData = abi.encodeWithSignature("onMessage((bytes32,uint16,address,uint256))", kMessage);
+        bytes memory kData = abi.encodeWithSignature("onMessage((bytes32,uint16,address,uint256))", kMessage);
 
         address[] memory messageRelays = new address[](0);
         messageRelays[0] = MESSAGE_RELAYER;
@@ -68,7 +72,7 @@ contract LockRouter {
         adapters[0] = ADAPTER;
 
         Message[] memory messages = new Message[](1);
-        messages[0] = Message(STRATEGY_LOCK, destinationChainId, sjData);
+        messages[0] = Message(STRATEGY_LOCK, DESTINATION_CHAIN_ID, kData);
 
         IYaho(YAHO).dispatchMessagesToAdapters(messages, messageRelays, adapters);
         emit MessageDispatched(kMessage);

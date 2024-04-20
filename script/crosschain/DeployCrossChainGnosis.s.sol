@@ -17,10 +17,10 @@ contract DeployCrossChainGnosis is PRBTest {
 
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));
-        allowanceOracle = new AllowanceOracle(address(0), address(0));
-        layerZeroMessageRelay = new LayerZeroMessageRelay(
-            address(yaho), arbitrumChainId, layerZeroGnosisEndpoint, layerZeroArbitrumEndpointId
-        );
+        //        allowanceOracle = new AllowanceOracle(address(0), address(0));
+        //        layerZeroMessageRelay = new LayerZeroMessageRelay(
+        //            address(yaho), arbitrumChainId, layerZeroGnosisEndpoint, layerZeroArbitrumEndpointId
+        //        );
 
         vm.stopBroadcast();
     }

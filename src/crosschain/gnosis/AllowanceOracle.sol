@@ -52,10 +52,6 @@ contract AllowanceOracle {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////// */
 
-    constructor(address offchainAllowanceOracle) {
-        OFFCHAIN_ALLOWANCE_ORACLE = offchainAllowanceOracle;
-    }
-
     function setOffchainAllowanceOracle(address offchainAllowanceOracle) external onlyOwner {
         OFFCHAIN_ALLOWANCE_ORACLE = offchainAllowanceOracle;
     }
