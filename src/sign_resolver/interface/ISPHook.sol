@@ -14,8 +14,8 @@ interface ISPHook {
         uint64 attestationId,
         bytes calldata extraData
     )
-    external
-    payable;
+        external
+        payable;
 
     function didReceiveAttestation(
         address attester,
@@ -25,7 +25,7 @@ interface ISPHook {
         uint256 resolverFeeERC20Amount,
         bytes calldata extraData
     )
-    external;
+        external;
 
     function didReceiveRevocation(
         address attester,
@@ -33,8 +33,8 @@ interface ISPHook {
         uint64 attestationId,
         bytes calldata extraData
     )
-    external
-    payable;
+        external
+        payable;
 
     function didReceiveRevocation(
         address attester,
@@ -44,5 +44,5 @@ interface ISPHook {
         uint256 resolverFeeERC20Amount,
         bytes calldata extraData
     )
-    external;
+        external;
 }

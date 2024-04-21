@@ -164,7 +164,8 @@ contract CreditModule {
     function pay(address safe, uint256 amount, address currency, address to, uint256 conversionRate) external {
         if (currency == address(EURE)) _payThroughSafe(safe, amount, to);
 
-        (uint256 service, uint256 spendLimit, address connectedSafe,) = IResolver(resolver).getUserSettings(safe);
+        (uint256 service, uint256 spendLimit, address originalSafe, address connectedSafe) =
+            IResolver(resolver).getUserSettings(safe);
         if (service == 1) _payThroughCreditModule(safe, amount, to, conversionRate);
         if (service == 2) _payCrossChain(connectedSafe, amount, to, conversionRate);
     }
@@ -209,6 +210,10 @@ contract CreditModule {
     ////////////////////////////////////////////////////////////// */
     function setLendingPool(address lendingPool_) external {
         lendingPool = lendingPool_;
+    }
+
+    function setCrossRouter(address crossRouter_) external {
+        crossRouter = crossRouter_;
     }
 
     function setFee(uint256 newFee) external {

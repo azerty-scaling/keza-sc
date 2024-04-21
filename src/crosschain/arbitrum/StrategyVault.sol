@@ -175,6 +175,14 @@ contract StrategyVault is ERC4626, Owned {
         emit MessageProcessed(message);
     }
 
+    function emergencyLock(address owner, uint256 amount) external onlyOwner {
+        _lock(owner, amount);
+    }
+
+    function emergencyUnlock(address owner, uint256 amount) external onlyOwner {
+        _unlock(owner, amount);
+    }
+
     function _lock(address owner, uint256 amount) internal {
         require(initialDepositAmount[owner] - lockedAmount[owner] >= amount, "StrategyLock: Not enough shares to lock");
         lockedAmount[owner] += amount;

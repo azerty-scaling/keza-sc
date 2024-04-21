@@ -4,10 +4,11 @@ pragma solidity >=0.8.22;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ISPHook } from "./interface/ISPHook.sol";
 
-
 contract Resolver is ISPHook {
     event AttestationReceived(address attester, uint64 schemaId, uint64 attestationId);
     event AttestationReceived2(address originalSafe, uint256 service, uint256 limit);
+    event Log(uint256 value);
+    event Log2(bytes value);
 
     struct UserSettings {
         uint256 service;
@@ -32,13 +33,10 @@ contract Resolver is ISPHook {
         require(attestationIdSent[attestationId] == false, "Attestation already sent");
         attestationIdSent[attestationId] = true;
 
-        uint256 service;
-        uint256 spendLimit;
-        address originalSafe;
-        address connectedSafe;
-        (service, spendLimit, originalSafe, connectedSafe) = abi.decode(extraData, (uint256, uint256, address, address));
+        UserSettings memory userSettings_;
+        userSettings_ = abi.decode(extraData, (UserSettings));
 
-        userSettings[originalSafe] = UserSettings(service, spendLimit, originalSafe, connectedSafe);
+        userSettings[originalSafe] = userSettings_;
         emit AttestationReceived(attester, schemaId, attestationId);
     }
 
@@ -55,13 +53,10 @@ contract Resolver is ISPHook {
         require(attestationIdSent[attestationId] == false, "Attestation already sent");
         attestationIdSent[attestationId] = true;
 
-        uint256 service;
-        uint256 spendLimit;
-        address originalSafe;
-        address connectedSafe;
-        (service, spendLimit, originalSafe, connectedSafe) = abi.decode(extraData, (uint256, uint256, address, address));
+        UserSettings memory userSettings_;
+        userSettings_ = abi.decode(extraData, (UserSettings));
 
-        userSettings[originalSafe] = UserSettings(service, spendLimit, originalSafe, connectedSafe);
+        userSettings[originalSafe] = userSettings_;
         emit AttestationReceived(attester, schemaId, attestationId);
     }
 
@@ -77,13 +72,10 @@ contract Resolver is ISPHook {
         require(attestationIdSent[attestationId] == true, "Attestation not sent");
         attestationIdSent[attestationId] = false;
 
-        uint256 service;
-        uint256 spendLimit;
-        address originalSafe;
-        address connectedSafe;
-        (service, spendLimit, originalSafe, connectedSafe) = abi.decode(extraData, (uint256, uint256, address, address));
+        UserSettings memory userSettings_;
+        userSettings_ = abi.decode(extraData, (UserSettings));
 
-        delete userSettings[originalSafe];
+        delete userSettings[userSettings_.originalSafe];
         emit AttestationReceived(attester, schemaId, attestationId);
     }
 
@@ -100,13 +92,10 @@ contract Resolver is ISPHook {
         require(attestationIdSent[attestationId] == true, "Attestation not sent");
         attestationIdSent[attestationId] = false;
 
-        uint256 service;
-        uint256 spendLimit;
-        address originalSafe;
-        address connectedSafe;
-        (service, spendLimit, originalSafe, connectedSafe) = abi.decode(extraData, (uint256, uint256, address, address));
+        UserSettings memory userSettings_;
+        userSettings_ = abi.decode(extraData, (UserSettings));
 
-        delete userSettings[originalSafe];
+        delete userSettings[userSettings_.originalSafe];
         emit AttestationReceived(attester, schemaId, attestationId);
     }
 
