@@ -3,3 +3,4 @@
 forge-std/=node_modules/forge-std/
 @solmate/=node_modules/solmate/
 @hashi/=node_modules/hashi/
+@ethsign/sing-protocol-evm/=node_modules/@ethsign/sing-protocol-evm/

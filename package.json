@@ -7,8 +7,10 @@
     "url": "https://github.com/Azerty-Scaling"
   },
   "dependencies": {
+    "@ethsign/sign-protocol-evm": "^1.1.1",
     "@openzeppelin/contracts": "^5.0.1",
     "hashi": "github:gnosis/hashi#v0.1.1",
+    "solidity-rlp": "^2.0.8",
     "solmate": "^6.2.0"
   },
   "devDependencies": {

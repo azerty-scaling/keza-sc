@@ -55,9 +55,9 @@ contract CrossRouter {
         KMessage memory kMessage = KMessage({ salt: salt, action: LOCK, to: safe, amount: amount });
         bytes memory kData = abi.encodeWithSignature("onMessage((bytes32,uint16,address,uint256))", kMessage);
 
-        address[] memory messageRelays = new address[](0);
+        address[] memory messageRelays = new address[](1);
         messageRelays[0] = MESSAGE_RELAYER;
-        address[] memory adapters = new address[](0);
+        address[] memory adapters = new address[](1);
         adapters[0] = ADAPTER;
 
         Message[] memory messages = new Message[](1);
@@ -74,9 +74,9 @@ contract CrossRouter {
         KMessage memory kMessage = KMessage({ salt: salt, action: UNLOCK, to: safe, amount: amount });
         bytes memory kData = abi.encodeWithSignature("onMessage((bytes32,uint16,address,uint256))", kMessage);
 
-        address[] memory messageRelays = new address[](0);
+        address[] memory messageRelays = new address[](1);
         messageRelays[0] = MESSAGE_RELAYER;
-        address[] memory adapters = new address[](0);
+        address[] memory adapters = new address[](1);
         adapters[0] = ADAPTER;
 
         Message[] memory messages = new Message[](1);
