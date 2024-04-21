@@ -36,7 +36,7 @@ contract Resolver is ISPHook {
         UserSettings memory userSettings_;
         userSettings_ = abi.decode(extraData, (UserSettings));
 
-        userSettings[originalSafe] = userSettings_;
+        userSettings[userSettings_.originalSafe] = userSettings_;
         emit AttestationReceived(attester, schemaId, attestationId);
     }
 
@@ -56,7 +56,7 @@ contract Resolver is ISPHook {
         UserSettings memory userSettings_;
         userSettings_ = abi.decode(extraData, (UserSettings));
 
-        userSettings[originalSafe] = userSettings_;
+        userSettings[userSettings_.originalSafe] = userSettings_;
         emit AttestationReceived(attester, schemaId, attestationId);
     }
 

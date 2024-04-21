@@ -14,8 +14,8 @@ contract Deploy is PRBTest {
     address public oracleEURe = 0xab70BCB260073d036d1660201e9d5405F5829b7a;
     address public stETH = 0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6;
     address public EURe = 0xcB444e90D8198415266c6a2724b7900fb12FC56E;
-    address public RESOLVER = 0x8AD7D1E0c10F81Bcc7CdF2AA72DeEa8Dccc8b8AD;
-    address public CROSS_ROUTER = 0x7B72dF4B7FEaF1653224043d06d9067a77dab04D;
+    address public RESOLVER = 0x2041E8CE28B0F6F543Df01c0F7d8e5BA1C0764cc;
+    address public CROSS_ROUTER = 0xa9ea2b38304C91e25c08fcFBCC3C0c548A62B205;
 
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));

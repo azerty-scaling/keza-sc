@@ -14,8 +14,8 @@ contract Deploy is PRBTest {
     CreditModule public creditModule;
     LendingPool public lendingPool;
 
-    address public CREDIT_MODULE = 0x5DEb5F4c0914dA54AcD1039e9406CF4fFBC26982;
-    address public LENDING_POOL = 0x8A56A52Fc09b6F4a884191d560e8764b0C5F9363;
+    address public CREDIT_MODULE = 0x6fD4e7f1A4BD425C540243499585c19A9440791A;
+    address public LENDING_POOL = 0xA1B51a4524811790C032Ae62b4e65FE67D8C23a7;
 
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));

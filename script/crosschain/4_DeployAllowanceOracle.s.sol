@@ -8,8 +8,8 @@ import { AllowanceOracle } from "../../src/crosschain/gnosis/AllowanceOracle.sol
 contract Deploy is PRBTest {
     AllowanceOracle public allowanceOracle;
 
-    address public CREDIT_MODULE = 0x5DEb5F4c0914dA54AcD1039e9406CF4fFBC26982;
-    address public CROSS_ROUTER = 0x7B72dF4B7FEaF1653224043d06d9067a77dab04D;
+    address public CREDIT_MODULE = 0x6fD4e7f1A4BD425C540243499585c19A9440791A;
+    address public CROSS_ROUTER = 0xa9ea2b38304C91e25c08fcFBCC3C0c548A62B205;
     address public OFFCHAIN_ALLOWANCE_ORACLE = 0xbCc802BFb35C4CDC9cA1B3e0bc0EbfEf7d0DcDb1;
 
     function run() public {

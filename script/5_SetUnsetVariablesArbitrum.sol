@@ -14,8 +14,8 @@ contract Deploy is PRBTest {
     CreditModule public creditModule;
     LendingPool public lendingPool;
 
-    address public STRATEGY_VAULT = 0xCF696Ca2FBE339449542F9874Ac3a72ABcc1f945;
-    address public CROSS_ROUTER = 0x7B72dF4B7FEaF1653224043d06d9067a77dab04D;
+    address public STRATEGY_VAULT = 0xEdc4fF459aC4eF05Be2E97629617A1cD4a799dEA;
+    address public CROSS_ROUTER = 0x6fD4e7f1A4BD425C540243499585c19A9440791A;
 
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));

@@ -11,7 +11,7 @@ contract Deploy is PRBTest {
     address public WSTETH = 0x5979D7b546E38E414F7E9822514be443A4800529;
     address public AARBWSTETH = 0x513c7E3a9c69cA3e22550eF58AC1C0088e918FFf;
     address public Yaru = 0x32a791d0eB36a326Ec2F8Eb318d77EF5755D3401;
-    address public CROSS_ROUTER = 0x32a791d0eB36a326Ec2F8Eb318d77EF5755D3401;
+    address public CROSS_ROUTER = address(0);
 
     function run() public {
         vm.startBroadcast(vm.envUint("TEST_PRIVATE_KEY"));

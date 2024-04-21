@@ -45,6 +45,11 @@ contract CrossRouter {
         ALLOWANCE_ORACLE = allowanceOracle;
     }
 
+    function setStrategyVault(address strategyVault) external {
+        require(msg.sender == OWNER, "Only the owner can call this function");
+        STRATEGY_VAULT = strategyVault;
+    }
+
     function canSafePay(address safe, uint256 amount) external view returns (bool canPay) {
         return IAllowanceOracle(ALLOWANCE_ORACLE).canSafePay(safe, amount);
     }

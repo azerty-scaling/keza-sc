@@ -216,6 +216,10 @@ contract CreditModule {
         crossRouter = crossRouter_;
     }
 
+    function setResolver(address resolver_) external {
+        resolver = resolver_;
+    }
+
     function setFee(uint256 newFee) external {
         fee = newFee;
     }
